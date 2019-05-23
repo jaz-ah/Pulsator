@@ -118,7 +118,15 @@ open class Pulsator: CAReplicatorLayer, CAAnimationDelegate {
         guard let keys = pulse.animationKeys() else {return false}
         return keys.count > 0
     }
-    
+
+    /// If this property is `true`, the pulse animates inward.
+    /// Otherwise, the pulse animates outward. Default is `false`.
+    open var isReversed: Bool = false {
+        didSet {
+            recreate()
+        }
+    }
+
     /// private properties for resuming
     fileprivate weak var prevSuperlayer: CALayer?
     fileprivate var prevLayerIndex: Int?
@@ -170,13 +178,15 @@ open class Pulsator: CAReplicatorLayer, CAAnimationDelegate {
     
     fileprivate func setupAnimationGroup() {
         let scaleAnimation = CABasicAnimation(keyPath: "transform.scale.xy")
-        scaleAnimation.fromValue = fromValueForRadius
-        scaleAnimation.toValue = 1.0
+        let toValue: Float = 1.0
+        scaleAnimation.fromValue = isReversed ? toValue : fromValueForRadius
+        scaleAnimation.toValue = isReversed ? fromValueForRadius : toValue
         scaleAnimation.duration = animationDuration
         
         let opacityAnimation = CAKeyframeAnimation(keyPath: "opacity")
         opacityAnimation.duration = animationDuration
-        opacityAnimation.values = [alpha, alpha * 0.5, 0.0]
+        let opacityValues = [alpha, alpha * 0.5, 0.0]
+        opacityAnimation.values = isReversed ? opacityValues.reversed() : opacityValues
         opacityAnimation.keyTimes = [0.0, NSNumber(value: keyTimeForHalfOpacity), 1.0]
         
         animationGroup = CAAnimationGroup()
@@ -216,7 +226,7 @@ open class Pulsator: CAReplicatorLayer, CAAnimationDelegate {
     
     @objc internal func save() {
         prevSuperlayer = superlayer
-        prevLayerIndex = prevSuperlayer?.sublayers?.index(where: {$0 === self})
+        prevLayerIndex = prevSuperlayer?.sublayers?.firstIndex(where: {$0 === self})
     }
 
     @objc internal func resume() {
